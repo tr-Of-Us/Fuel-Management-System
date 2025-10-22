@@ -1,0 +1,37 @@
+# Fuel Management System - Python Dependencies
+
+# Core GUI Framework
+# Tkinter comes pre-installed with Python, but we include it for documentation
+# tkinter==8.6 (usually pre-installed)
+
+# Testing Framework
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# Code Quality
+pylint==3.0.3
+black==23.12.1
+
+# Type Checking
+mypy==1.7.1
+
+# Additional Utilities (if needed later)
+# These are optional and can be uncommented as needed
+
+# For advanced GUI features
+# pillow==10.1.0  # Image handling for custom gauges
+
+# For data validation
+# pydantic==2.5.2
+
+# For configuration management
+# python-dotenv==1.0.0
+
+# For date/time handling
+# python-dateutil==2.8.2
+
+# For documentation
+# sphinx==7.2.6
+
+# Note: This project primarily uses Python standard library
+# Additional packages will be added as needed during development
