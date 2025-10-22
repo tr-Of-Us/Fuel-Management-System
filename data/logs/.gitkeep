@@ -1,0 +1,2 @@
+# This file ensures the logs directory is tracked by Git
+# Git doesn't track empty directories, so this placeholder file is needed

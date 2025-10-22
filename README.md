@@ -17,7 +17,6 @@ fuel-management-system/
 ├── gui/                       # GUI components (dashboard, panels, widgets)
 ├── data/                      # JSON configuration and state files
 ├── tests/                     # Unit and integration tests
-└── examples/                  # Demo configurations
 ```
 ## Installation
 
