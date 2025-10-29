@@ -1,4 +1,4 @@
-from fuel_tank import FuelTank
+from .fuel_tank import FuelTank
 
 class MainFuelTank(FuelTank):
     """Main fuel tank for primary aircraft fuel storage."""
