@@ -25,7 +25,6 @@ class AuxiliaryTank(FuelTank):
         self._tank_type = "AUXILIARY"
     
     def get_tank_type(self):
-        """Return the tank type"""
         return self._tank_type
     
     # Override abstract method 
@@ -80,7 +79,6 @@ class AuxiliaryTank(FuelTank):
         return self._fuel_level > self.get_low_fuel_threshold()
     
     def __str__(self):
-        """String representation"""
         return (f"[AUXILIARY] {self._name}: "
                 f"{self._fuel_level:.1f}L / {self._capacity:.1f}L "
                 f"({self.get_fuel_percentage():.1f}%) - {self._status}")

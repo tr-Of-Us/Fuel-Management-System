@@ -1,12 +1,6 @@
 from abc import ABC, abstractmethod
 
 class FuelTank(ABC):
-    """
-    Abstract base class representing a fuel tank.
-    
-    This class cannot be instantiated directly - it must be inherited
-    by concrete tank classes (MainFuelTank, AuxiliaryTank, ReserveTank).
-    """
     
     def __init__(self, tank_id, name, capacity, fuel_type="Jet-A", initial_fuel=0):
         """
@@ -86,60 +80,32 @@ class FuelTank(ABC):
         """Return maximum safe temperature limit"""
         return self._max_temperature
     
-    # setters (Encapsulation) 
-    
+    # setters 
     def set_pressure(self, pressure):
-        """
-        Set current pressure with validation.
-        
-        Args:
-            pressure (float): Pressure in PSI
-            
-        Returns:
-            bool: True if successful, False if invalid
-        """
+        """Set pressure with validation (0 to 120% of max)"""
         if pressure < 0:
             print(f"Error: Pressure cannot be negative")
             return False
-        if pressure > self._max_pressure * 1.2:  # 20% over max is dangerous
+        if pressure > self._max_pressure * 1.2:
             print(f"Error: Pressure {pressure} PSI exceeds safe limit")
             return False
-        
         self._pressure = pressure
         return True
     
     def set_temperature(self, temperature):
-        """
-        Set current temperature with validation.
-        
-        Args:
-            temperature (float): Temperature in Celsius
-            
-        Returns:
-            bool: True if successful, False if invalid
-        """
-        if temperature < -50:  # Fuel freezes at very low temps
+        """Set temperature with validation (-50°C to 120% of max)"""
+        if temperature < -50:
             print(f"Error: Temperature too low for fuel operation")
             return False
         if temperature > self._max_temperature * 1.2:
             print(f"Error: Temperature {temperature}°C exceeds safe limit")
             return False
-        
         self._temperature = temperature
         return True
     
-    # Fuel Management Methods
-    
+    # Fuel management methods
     def add_fuel(self, amount):
-        """
-        Add fuel to the tank with overflow protection.
-        
-        Args:
-            amount (float): Amount of fuel to add in liters
-            
-        Returns:
-            bool: True if successful, False if would overflow
-        """
+        """Add fuel with overflow protection"""
         if amount < 0:
             print(f"Error: Cannot add negative fuel amount")
             return False
@@ -154,15 +120,7 @@ class FuelTank(ABC):
         return True
     
     def remove_fuel(self, amount):
-        """
-        Remove fuel from the tank with validation.
-        
-        Args:
-            amount (float): Amount of fuel to remove in liters
-            
-        Returns:
-            bool: True if successful, False if insufficient fuel
-        """
+        """Remove fuel with validation"""
         if amount < 0:
             print(f"Error: Cannot remove negative fuel amount")
             return False
@@ -176,69 +134,32 @@ class FuelTank(ABC):
         return True
     
     def get_available_capacity(self):
-        """
-        Get remaining space available for fuel.
-        
-        Returns:
-            float: Available capacity in liters
-        """
+        """Return remaining space in tank"""
         return self._capacity - self._fuel_level
     
     def is_empty(self):
-        """Check if tank is empty"""
         return self._fuel_level <= 0
     
     def is_full(self):
-        """Check if tank is full (within 99% capacity)"""
+        """Check if tank is full (99% or more)"""
         return self._fuel_level >= self._capacity * 0.99
-    
-    # Abstraction
     
     @abstractmethod
     def check_status(self):
-        """
-        Check and return tank status based on fuel level.
-        
-        Different tank types have different warning thresholds:
-        - MainFuelTank: Standard thresholds
-        - AuxiliaryTank: Similar to main tanks
-        - ReserveTank: Stricter warnings (polymorphism)
-        
-        Returns:
-            str: Status string ("NORMAL", "LOW", "CRITICAL")
-        """
+        """Return tank status based on fuel level (NORMAL/LOW/CRITICAL)"""
         pass
     
     @abstractmethod
     def get_low_fuel_threshold(self):
-        """
-        Get the fuel level that triggers low fuel warning.
-        
-        Different tank types have different thresholds (polymorphism).
-        
-        Returns:
-            float: Fuel level in liters that triggers warning
-        """
+        """Return fuel level that triggers low fuel warning"""
         pass
     
-    # Helper methods
-    
     def _update_status(self):
-        """
-        Update tank status based on current fuel level.
-        Called internally after fuel changes.
-        """
+        """Update tank status after fuel changes"""
         self._status = self.check_status()
     
-    # Data export for Json
-    
     def to_dict(self):
-        """
-        Convert tank data to dictionary for JSON serialization.
-        
-        Returns:
-            dict: Dictionary containing all tank data
-        """
+        """Convert tank data to dictionary for JSON export"""
         return {
             "tank_id": self._tank_id,
             "name": self._name,
@@ -253,24 +174,10 @@ class FuelTank(ABC):
             "max_temperature": self._max_temperature
         }
     
-    # String Representations  
-    
     def __str__(self):
-        """
-        String representation for printing.
-        
-        Returns:
-            str: Formatted tank information
-        """
         return (f"{self._name} ({self._tank_id}): "
                 f"{self._fuel_level:.1f}L / {self._capacity:.1f}L "
                 f"({self.get_fuel_percentage():.1f}%) - {self._status}")
     
     def __repr__(self):
-        """
-        Developer-friendly representation.
-        
-        Returns:
-            str: Technical representation
-        """
         return f"FuelTank(id={self._tank_id}, fuel={self._fuel_level}/{self._capacity})"
