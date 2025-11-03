@@ -20,7 +20,6 @@ class FuelManagementGUI:
         self.root = root
         self.root.title("Aerospace Fuel Management System")
         self.root.geometry("1200x800")
-        self.root.configure(bg='#1a1a2e')
         
         # Initialise data logger
         self.logger = DataLogger()
@@ -37,6 +36,9 @@ class FuelManagementGUI:
         
         # Automatic updates
         self.update_displays()
+        
+        # Add transfer panel
+        self.setup_transfer_panel()
     
     def load_tanks_from_config(self):
         """Load tank configuration from JSON file"""
@@ -83,8 +85,32 @@ class FuelManagementGUI:
     def setup_main_content(self):
         """Setup main content area with fuel gauges"""
         # Create main container
-        self.main_frame = tk.Frame(self.root, bg='#1a1a2e')
-        self.main_frame.pack(fill='both', expand=True, padx=20, pady=10)
+            # Create a main container with a Canvas (scrollable)
+        container = tk.Frame(self.root, bg='#1a1a2e')
+        container.pack(fill='both', expand=True, padx=20, pady=10)
+
+        # Add a canvas + scrollbar
+        canvas = tk.Canvas(container, bg='#1a1a2e', highlightthickness=0)
+        scrollbar = tk.Scrollbar(container, orient='vertical', command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg='#1a1a2e')
+
+        # Configure scrolling
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor='nw')
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Pack everything
+        canvas.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Store reference for other setup functions
+        self.main_frame = scroll_frame
+
+
         
         # Title
         title = tk.Label(
@@ -114,7 +140,9 @@ class FuelManagementGUI:
         
         # Configure grid weights for responsive layout
         self.gauge_frame.grid_columnconfigure(0, weight=1)
-        self.gauge_frame.grid_columnconfigure(1, weight=1)
+        self.gauge_frame.grid_columnconfigure(1, weight=1) 
+         
+        
     
     def create_fuel_gauge(self, parent, tank_id, tank):
         """
@@ -257,7 +285,235 @@ class FuelManagementGUI:
         gauge_frame.temp_label = temp_label
         
         return gauge_frame
-    
+      
+    def setup_transfer_panel(self):
+        """Setup fuel transfer control panel"""
+        # Transfer panel container
+        transfer_container = tk.Frame(self.main_frame, bg='#16213e', relief='solid', borderwidth=2)
+        transfer_container.pack(fill='x', pady=(20, 0))
+        
+        # Title
+        title = tk.Label(
+            transfer_container,
+            text="FUEL TRANSFER CONTROLS",
+            font=('Arial', 14, 'bold'),
+            bg='#16213e',
+            fg='#00d4ff'
+        )
+        title.pack(pady=(10, 15))
+        
+        # Controls frame
+        controls_frame = tk.Frame(transfer_container, bg='#16213e')
+        controls_frame.pack(padx=20, pady=(0, 15))
+        
+        # Source tank selection
+        source_label = tk.Label(
+            controls_frame,
+            text="Source Tank:",
+            font=('Arial', 11),
+            bg='#16213e',
+            fg='#ffffff'
+        )
+        source_label.grid(row=0, column=0, padx=10, pady=5, sticky='e')
+        
+        self.source_var = tk.StringVar()
+        tank_ids = list(self.tanks.keys())
+        self.source_combo = ttk.Combobox(
+            controls_frame,
+            textvariable=self.source_var,
+            values=tank_ids,
+            state='readonly',
+            width=20,
+            font=('Arial', 10)
+        )
+        self.source_combo.grid(row=0, column=1, padx=10, pady=5)
+        if tank_ids:
+            self.source_combo.current(0)
+        
+        # Destination tank selection
+        dest_label = tk.Label(
+            controls_frame,
+            text="Destination Tank:",
+            font=('Arial', 11),
+            bg='#16213e',
+            fg='#ffffff'
+        )
+        dest_label.grid(row=0, column=2, padx=10, pady=5, sticky='e')
+        
+        self.dest_var = tk.StringVar()
+        self.dest_combo = ttk.Combobox(
+            controls_frame,
+            textvariable=self.dest_var,
+            values=tank_ids,
+            state='readonly',
+            width=20,
+            font=('Arial', 10)
+        )
+        self.dest_combo.grid(row=0, column=3, padx=10, pady=5)
+        if len(tank_ids) > 1:
+            self.dest_combo.current(1)
+        
+        # Amount input
+        amount_label = tk.Label(
+            controls_frame,
+            text="Amount (L):",
+            font=('Arial', 11),
+            bg='#16213e',
+            fg='#ffffff'
+        )
+        amount_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+        
+        self.amount_var = tk.StringVar(value="500")
+        amount_entry = tk.Entry(
+            controls_frame,
+            textvariable=self.amount_var,
+            width=22,
+            font=('Arial', 10)
+        )
+        amount_entry.grid(row=1, column=1, padx=10, pady=5)
+        
+                # --- Transfer button ---
+        transfer_button = tk.Button(
+            transfer_container,
+            text="INITIATE TRANSFER",
+            font=('Arial', 12, 'bold'),
+            bg='#00d4ff',
+            fg='black',
+            activebackground='#0099cc',
+            padx=10,
+            pady=5,
+            command=self.initiate_transfer
+        )
+        transfer_button.pack(pady=(5, 10))
+        
+        # Status message label
+        self.transfer_status_label = tk.Label(
+        transfer_container,
+        text="",
+        font=('Arial', 10),
+        bg='#16213e',
+        fg='#ffaa00',
+        wraplength=800
+        )
+        self.transfer_status_label.pack(pady=(0, 10))
+        
+       
+    def initiate_transfer(self):
+        """Execute fuel transfer between tanks"""
+        try:
+            # Get selected tanks
+            source_id = self.source_var.get()
+            dest_id = self.dest_var.get()
+            amount_str = self.amount_var.get()
+            
+            # Validation
+            if not source_id or not dest_id:
+                self.show_transfer_status("Error: Please select source and destination tanks", "error")
+                return
+            
+            if source_id == dest_id:
+                self.show_transfer_status("Error: Source and destination must be different", "error")
+                return
+            
+            try:
+                amount = float(amount_str)
+            except ValueError:
+                self.show_transfer_status("Error: Amount must be a valid number", "error")
+                return
+            
+            if amount <= 0:
+                self.show_transfer_status("Error: Amount must be positive", "error")
+                return
+            
+            # Get tanks
+            source_tank = self.tanks.get(source_id)
+            dest_tank = self.tanks.get(dest_id)
+            
+            if not source_tank or not dest_tank:
+                self.show_transfer_status("Error: Invalid tank selection", "error")
+                return
+            
+            # Check if source is reserve tank
+            if hasattr(source_tank, 'is_emergency_mode'):
+                if not source_tank.is_emergency_mode():
+                    response = messagebox.askyesno(
+                        "Reserve Tank Warning",
+                        f"{source_tank.get_name()} is a reserve tank.\n\n"
+                        "Emergency mode must be activated to transfer fuel.\n\n"
+                        "Activate emergency mode?"
+                    )
+                    if response:
+                        source_tank.activate_emergency_mode()
+                        self.logger.log_event("EMERGENCY_MODE", f"Emergency mode activated for {source_id}")
+                    else:
+                        self.show_transfer_status("Transfer cancelled - Emergency mode not activated", "warning")
+                        return
+            
+            # Validate source has enough fuel
+            if source_tank.get_fuel_level() < amount:
+                self.show_transfer_status(
+                    f"Error: Insufficient fuel in {source_id} "
+                    f"(Available: {source_tank.get_fuel_level():.1f}L)",
+                    "error"
+                )
+                return
+            
+            # Validate destination has capacity
+            if dest_tank.get_available_capacity() < amount:
+                self.show_transfer_status(
+                    f"Error: Insufficient capacity in {dest_id} "
+                    f"(Available: {dest_tank.get_available_capacity():.1f}L)",
+                    "error"
+                )
+                return
+            
+            # Execute transfer
+            remove_success = source_tank.remove_fuel(amount)
+            if not remove_success:
+                self.show_transfer_status("Error: Failed to remove fuel from source tank", "error")
+                self.logger.log_transfer(source_id, dest_id, amount, False)
+                return
+            
+            add_success = dest_tank.add_fuel(amount)
+            if not add_success:
+                # Rollback
+                source_tank.add_fuel(amount)
+                self.show_transfer_status("Error: Failed to add fuel to destination tank", "error")
+                self.logger.log_transfer(source_id, dest_id, amount, False)
+                return
+            
+            # Success!
+            self.show_transfer_status(
+                f"✓ Successfully transferred {amount:.1f}L from {source_id} to {dest_id}",
+                "success"
+            )
+            self.logger.log_transfer(source_id, dest_id, amount, True)
+            
+            # Update displays immediately
+            self.update_displays()
+            
+        except Exception as e:
+            self.show_transfer_status(f"Error: {str(e)}", "error")
+            self.logger.log_event("TRANSFER_ERROR", str(e), severity="WARNING")
+
+    def show_transfer_status(self, message, status_type):
+        """
+        Show transfer status message.
+        
+        Args:
+            message: Status message
+            status_type: 'success', 'error', or 'warning'
+        """
+        colors = {
+            'success': '#00ff00',
+            'error': '#ff0000',
+            'warning': '#ffaa00'
+        }
+        self.transfer_status_label.config(
+            text=message,
+            fg=colors.get(status_type, '#ffffff')
+        )
+            
     def setup_footer(self):
         """Setup footer with status bar"""
         footer = tk.Frame(self.root, bg='#16213e', height=40)
