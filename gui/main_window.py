@@ -81,30 +81,182 @@ class FuelManagementGUI:
         title.pack(pady=20)
     
     def setup_main_content(self):
-        """Setup main content area - will be filled in next commits"""
-        # Main container
+        """Setup main content area with fuel gauges"""
+        # Create main container
         self.main_frame = tk.Frame(self.root, bg='#1a1a2e')
         self.main_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
-        # Temporary message
-        placeholder = tk.Label(
+        # Title
+        title = tk.Label(
             self.main_frame,
-            text="Fuel gauges and controls will be added in next commits",
-            font=('Arial', 16),
-            bg='#1a1a2e',
-            fg='#ffffff'
-        )
-        placeholder.pack(pady=50)
-        
-        # Tank count
-        tank_info = tk.Label(
-            self.main_frame,
-            text=f"Tanks loaded: {len(self.tanks)}",
-            font=('Arial', 14),
+            text="FUEL TANK MONITORING",
+            font=('Arial', 18, 'bold'),
             bg='#1a1a2e',
             fg='#00d4ff'
         )
-        tank_info.pack()
+        title.pack(pady=(0, 20))
+        
+        # Create gauge container
+        self.gauge_frame = tk.Frame(self.main_frame, bg='#1a1a2e')
+        self.gauge_frame.pack(fill='both', expand=True)
+        
+        # Create gauges for each tank
+        self.gauge_widgets = {}
+        tank_list = list(self.tanks.items())
+        
+        for idx, (tank_id, tank) in enumerate(tank_list):
+            row = idx // 2  # 2 gauges per row
+            col = idx % 2
+            
+            gauge = self.create_fuel_gauge(self.gauge_frame, tank_id, tank)
+            gauge.grid(row=row, column=col, padx=20, pady=20, sticky='nsew')
+            self.gauge_widgets[tank_id] = gauge
+        
+        # Configure grid weights for responsive layout
+        self.gauge_frame.grid_columnconfigure(0, weight=1)
+        self.gauge_frame.grid_columnconfigure(1, weight=1)
+    
+    def create_fuel_gauge(self, parent, tank_id, tank):
+        """
+        Create a fuel gauge widget for a tank.
+        
+        Args:
+            parent: Parent widget
+            tank_id: Tank identifier
+            tank: Tank object
+        
+        Returns:
+            Frame containing the gauge
+        """
+        # Main gauge container
+        gauge_frame = tk.Frame(parent, bg='#16213e', relief='solid', borderwidth=2)
+        
+        # Tank name header
+        name_label = tk.Label(
+            gauge_frame,
+            text=tank.get_name(),
+            font=('Arial', 14, 'bold'),
+            bg='#16213e',
+            fg='#00d4ff'
+        )
+        name_label.pack(pady=(10, 5))
+        
+        # Tank ID
+        id_label = tk.Label(
+            gauge_frame,
+            text=f"[{tank_id}]",
+            font=('Arial', 10),
+            bg='#16213e',
+            fg='#888888'
+        )
+        id_label.pack()
+        
+        # Create canvas for visual gauge
+        canvas = tk.Canvas(
+            gauge_frame,
+            width=200,
+            height=250,
+            bg='#16213e',
+            highlightthickness=0
+        )
+        canvas.pack(pady=10)
+        
+        # Draw gauge background (empty tank)
+        canvas.create_rectangle(
+            50, 50, 150, 200,
+            fill='#0f0f1e',
+            outline='#00d4ff',
+            width=2,
+            tags=f'{tank_id}_bg'
+        )
+        
+        # Draw fuel level (to be updated)
+        percentage = tank.get_fuel_percentage()
+        fuel_height = int(150 * (percentage / 100))
+        fuel_y = 200 - fuel_height
+        
+        # Color based on status
+        status = tank.get_status()
+        if status == "CRITICAL":
+            fuel_color = '#ff0000'
+        elif status == "LOW":
+            fuel_color = '#ffaa00'
+        else:
+            fuel_color = '#00ff00'
+        
+        canvas.create_rectangle(
+            50, fuel_y, 150, 200,
+            fill=fuel_color,
+            outline='',
+            tags=f'{tank_id}_fuel'
+        )
+        
+        # Percentage markers (0%, 25%, 50%, 75%, 100%)
+        for i in range(0, 101, 25):
+            y = 200 - int(150 * (i / 100))
+            canvas.create_line(40, y, 50, y, fill='#00d4ff', width=1)
+            canvas.create_text(30, y, text=f'{i}%', fill='#00d4ff', font=('Arial', 8))
+        
+        # Store canvas reference in gauge_frame for updates
+        gauge_frame.canvas = canvas
+        gauge_frame.tank_id = tank_id
+        
+        # Fuel level text
+        fuel_label = tk.Label(
+            gauge_frame,
+            text=f"{tank.get_fuel_level():.0f}L / {tank.get_capacity():.0f}L",
+            font=('Arial', 12, 'bold'),
+            bg='#16213e',
+            fg='#ffffff'
+        )
+        fuel_label.pack()
+        gauge_frame.fuel_label = fuel_label
+        
+        # Percentage text
+        percentage_label = tk.Label(
+            gauge_frame,
+            text=f"{percentage:.1f}%",
+            font=('Arial', 16, 'bold'),
+            bg='#16213e',
+            fg=fuel_color
+        )
+        percentage_label.pack()
+        gauge_frame.percentage_label = percentage_label
+        
+        # Status indicator
+        status_label = tk.Label(
+            gauge_frame,
+            text=f"STATUS: {status}",
+            font=('Arial', 10, 'bold'),
+            bg='#16213e',
+            fg=fuel_color
+        )
+        status_label.pack(pady=(5, 0))
+        gauge_frame.status_label = status_label
+        
+        # Pressure display
+        pressure_label = tk.Label(
+            gauge_frame,
+            text=f"Pressure: {tank.get_pressure():.1f} PSI",
+            font=('Arial', 9),
+            bg='#16213e',
+            fg='#cccccc'
+        )
+        pressure_label.pack()
+        gauge_frame.pressure_label = pressure_label
+        
+        # Temperature display
+        temp_label = tk.Label(
+            gauge_frame,
+            text=f"Temp: {tank.get_temperature():.1f}°C",
+            font=('Arial', 9),
+            bg='#16213e',
+            fg='#cccccc'
+        )
+        temp_label.pack(pady=(0, 10))
+        gauge_frame.temp_label = temp_label
+        
+        return gauge_frame
     
     def setup_footer(self):
         """Setup footer with status bar"""
@@ -134,15 +286,57 @@ class FuelManagementGUI:
             anchor='e'
         )
         self.fuel_label.pack(side='right', padx=20, pady=10)
-    
+        
+        
     def update_displays(self):
         """Update all display elements - called periodically"""
+        # Update each gauge
+        for tank_id, gauge_frame in self.gauge_widgets.items():
+            tank = self.tanks[tank_id]
+            
+            # Get current values
+            percentage = tank.get_fuel_percentage()
+            status = tank.get_status()
+            fuel_level = tank.get_fuel_level()
+            capacity = tank.get_capacity()
+            pressure = tank.get_pressure()
+            temperature = tank.get_temperature()
+            
+            # Determine color based on status
+            if status == "CRITICAL":
+                fuel_color = '#ff0000'
+            elif status == "LOW":
+                fuel_color = '#ffaa00'
+            else:
+                fuel_color = '#00ff00'
+            
+            # Update canvas fuel level
+            canvas = gauge_frame.canvas
+            fuel_height = int(150 * (percentage / 100))
+            fuel_y = 200 - fuel_height
+            
+            # Delete old fuel rectangle and create new one
+            canvas.delete(f'{tank_id}_fuel')
+            canvas.create_rectangle(
+                50, fuel_y, 150, 200,
+                fill=fuel_color,
+                outline='',
+                tags=f'{tank_id}_fuel'
+            )
+            
+            # Update text labels
+            gauge_frame.fuel_label.config(text=f"{fuel_level:.0f}L / {capacity:.0f}L")
+            gauge_frame.percentage_label.config(text=f"{percentage:.1f}%", fg=fuel_color)
+            gauge_frame.status_label.config(text=f"STATUS: {status}", fg=fuel_color)
+            gauge_frame.pressure_label.config(text=f"Pressure: {pressure:.1f} PSI")
+            gauge_frame.temp_label.config(text=f"Temp: {temperature:.1f}°C")
+        
         # Update footer
         total_fuel = sum(tank.get_fuel_level() for tank in self.tanks.values())
         total_capacity = sum(tank.get_capacity() for tank in self.tanks.values())
         self.fuel_label.config(text=f"Total Fuel: {total_fuel:.0f}L / {total_capacity:.0f}L")
         
-        # Schedule next update (every second)
+        # Schedule next update (every 1 second)
         self.root.after(1000, self.update_displays)
 
 
