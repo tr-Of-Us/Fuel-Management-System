@@ -1,10 +1,3 @@
-"""
-AlertSystem
-Monitors fuel system and generates alerts for issues.
-Adan's responsibility - Commit 16
-"""
-
-
 class AlertSystem:
     """Alert system for monitoring fuel levels and generating warnings"""
     
