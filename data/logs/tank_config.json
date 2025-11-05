@@ -1,0 +1,68 @@
+{
+  "system_name": "Aerospace Fuel Management System",
+  "aircraft_type": "Commercial Airliner",
+  "tanks": [
+    {
+      "tank_id": "LEFT_MAIN",
+      "name": "Left Wing Main Tank",
+      "type": "MainFuelTank",
+      "capacity": 5000,
+      "initial_fuel": 4500,
+      "fuel_type": "Jet-A",
+      "max_pressure": 50.0,
+      "max_temperature": 60.0
+    },
+    {
+      "tank_id": "RIGHT_MAIN",
+      "name": "Right Wing Main Tank",
+      "type": "MainFuelTank",
+      "capacity": 5000,
+      "initial_fuel": 4500,
+      "fuel_type": "Jet-A",
+      "max_pressure": 50.0,
+      "max_temperature": 60.0
+    },
+    {
+      "tank_id": "CENTER_AUX",
+      "name": "Center Auxiliary Tank",
+      "type": "AuxiliaryTank",
+      "capacity": 3000,
+      "initial_fuel": 2500,
+      "fuel_type": "Jet-A",
+      "max_pressure": 45.0,
+      "max_temperature": 55.0
+    },
+    {
+      "tank_id": "RESERVE",
+      "name": "Emergency Reserve Tank",
+      "type": "ReserveTank",
+      "capacity": 1000,
+      "initial_fuel": 1000,
+      "fuel_type": "Jet-A",
+      "max_pressure": 40.0,
+      "max_temperature": 50.0
+    }
+  ],
+  "sensors": [
+    {
+      "sensor_id": "SENS_LM_LEVEL",
+      "sensor_type": "LEVEL",
+      "tank_id": "LEFT_MAIN"
+    },
+    {
+      "sensor_id": "SENS_RM_LEVEL",
+      "sensor_type": "LEVEL",
+      "tank_id": "RIGHT_MAIN"
+    },
+    {
+      "sensor_id": "SENS_CA_LEVEL",
+      "sensor_type": "LEVEL",
+      "tank_id": "CENTER_AUX"
+    },
+    {
+      "sensor_id": "SENS_RES_LEVEL",
+      "sensor_type": "LEVEL",
+      "tank_id": "RESERVE"
+    }
+  ]
+}

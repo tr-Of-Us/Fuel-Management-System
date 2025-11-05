@@ -1,0 +1,23 @@
+[
+  {
+    "timestamp": "2025-10-29T20:39:00.916269",
+    "event_type": "SYSTEM_START",
+    "message": "Fuel management system initialized",
+    "tank_id": null,
+    "severity": "INFO"
+  },
+  {
+    "timestamp": "2025-10-29T20:39:00.916283",
+    "event_type": "FUEL_LEVEL",
+    "message": "Fuel level: 4500.0L / 5000.0L (90.0%)",
+    "tank_id": "LEFT_MAIN",
+    "severity": "INFO"
+  },
+  {
+    "timestamp": "2025-10-29T20:39:00.916288",
+    "event_type": "FUEL_TRANSFER",
+    "message": "Transfer 500L from CENTER to LEFT_MAIN - SUCCESS",
+    "tank_id": "CENTER",
+    "severity": "INFO"
+  }
+]
