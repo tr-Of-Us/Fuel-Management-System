@@ -11,6 +11,8 @@ from models.main_fuel_tank import MainFuelTank
 from models.auxiliary_tank import AuxiliaryTank
 from models.reserve_tank import ReserveTank
 from utils.data_logger import DataLogger
+from controllers.fuel_transfer_controller import FuelTransferController
+from controllers.fuel_system import FuelSystem
 
 
 class FuelManagementGUI:
@@ -22,9 +24,11 @@ class FuelManagementGUI:
         self.root.geometry("1300x850")
         self.root.configure(bg='#0a0e27')
 
+        # Logger and Fuel System
         self.logger = DataLogger()
-        self.tanks = {}
+        self.fuel_system = FuelSystem()
         self.load_tanks_from_config()
+        self.transfer_controller = FuelTransferController(self.fuel_system, self.logger)
 
         self.setup_styles()
         self.setup_header()
@@ -65,9 +69,9 @@ class FuelManagementGUI:
                 else:
                     continue
 
-                self.tanks[tank_id] = tank
+                self.fuel_system.add_tank(tank)
 
-            self.logger.log_event("CONFIG_LOADED", f"Loaded {len(self.tanks)} tanks")
+            self.logger.log_event("CONFIG_LOADED", f"Loaded {len(self.fuel_system.get_tank_ids())} tanks")
 
         except Exception as e:
             messagebox.showerror("Config Error", f"Failed to load configuration:\n{e}")
@@ -124,10 +128,10 @@ class FuelManagementGUI:
         scrollbar.pack(side='right', fill='y')
 
         self.gauge_widgets = {}
-        for idx, (tid, tank) in enumerate(self.tanks.items()):
-            gf = self.create_gauge(self.gauge_frame, tid, tank)
+        for idx, tank in enumerate(self.fuel_system.get_all_tanks().values()):
+            gf = self.create_gauge(self.gauge_frame, tank.get_tank_id(), tank)
             gf.grid(row=idx // 2, column=idx % 2, padx=10, pady=10, sticky='nsew')
-            self.gauge_widgets[tid] = gf
+            self.gauge_widgets[tank.get_tank_id()] = gf
 
         self.gauge_frame.grid_columnconfigure(0, weight=1)
         self.gauge_frame.grid_columnconfigure(1, weight=1)
@@ -176,7 +180,7 @@ class FuelManagementGUI:
         tk.Label(frame, text="Source:", bg='#16213e', fg='#00d4ff').grid(row=0, column=0, sticky='e', padx=5)
         self.source_var = tk.StringVar()
         self.source_combo = ttk.Combobox(frame, textvariable=self.source_var,
-                                         values=list(self.tanks.keys()), state='readonly', width=18)
+                                         values=self.fuel_system.get_tank_ids(), state='readonly', width=18)
         self.source_combo.grid(row=0, column=1, padx=5)
 
         tk.Label(frame, text="→", bg='#16213e', fg='#00d4ff').grid(row=0, column=2, padx=5)
@@ -184,7 +188,7 @@ class FuelManagementGUI:
         tk.Label(frame, text="Destination:", bg='#16213e', fg='#00d4ff').grid(row=0, column=3, sticky='e', padx=5)
         self.dest_var = tk.StringVar()
         self.dest_combo = ttk.Combobox(frame, textvariable=self.dest_var,
-                                       values=list(self.tanks.keys()), state='readonly', width=18)
+                                       values=self.fuel_system.get_tank_ids(), state='readonly', width=18)
         self.dest_combo.grid(row=0, column=4, padx=5)
 
         tk.Label(frame, text="Amount (L):", bg='#16213e', fg='#00d4ff').grid(row=1, column=0, sticky='e', padx=5)
@@ -244,12 +248,8 @@ class FuelManagementGUI:
     def initiate_transfer(self):
         try:
             src, dest, amt_str = self.source_var.get(), self.dest_var.get(), self.amount_var.get()
-
             if not src or not dest:
                 return self.show_transfer_status("Error: Select both tanks", "error")
-            if src == dest:
-                return self.show_transfer_status("Error: Tanks must differ", "error")
-
             try:
                 amt = float(amt_str)
             except ValueError:
@@ -257,29 +257,20 @@ class FuelManagementGUI:
             if amt <= 0:
                 return self.show_transfer_status("Error: Amount must be positive", "error")
 
-            s, d = self.tanks.get(src), self.tanks.get(dest)
-            if not s or not d:
-                return self.show_transfer_status("Error: Invalid tank selection", "error")
-
-            if hasattr(s, 'is_emergency_mode') and not s.is_emergency_mode():
-                if not messagebox.askyesno("Reserve Tank", f"Activate emergency mode for {s.get_name()}?"):
+            # Handle reserve tank emergency prompt if source is ReserveTank
+            source_tank = self.fuel_system.get_tank(src)
+            if hasattr(source_tank, 'is_emergency_mode') and not source_tank.is_emergency_mode():
+                if messagebox.askyesno("Reserve Tank", f"Activate emergency mode for {source_tank.get_name()}?"):
+                    source_tank.activate_emergency_mode()
+                else:
                     return self.show_transfer_status("Transfer cancelled", "warning")
-                s.activate_emergency_mode()
 
-            if s.get_fuel_level() < amt:
-                return self.show_transfer_status(f"Not enough fuel in {src}", "error")
-            if d.get_available_capacity() < amt:
-                return self.show_transfer_status(f"Not enough capacity in {dest}", "error")
+            # Execute transfer via controller
+            success, msg = self.transfer_controller.execute_transfer(src, dest, amt)
+            self.show_transfer_status(msg, "success" if success else "error")
+            if success:
+                self.add_log_entry(f"Transfer {amt:.1f}L from {src} → {dest}", "INFO")
 
-            if not s.remove_fuel(amt):
-                return self.show_transfer_status("Failed to remove fuel", "error")
-            if not d.add_fuel(amt):
-                s.add_fuel(amt)
-                return self.show_transfer_status("Failed to add fuel (rolled back)", "error")
-
-            self.logger.log_transfer(src, dest, amt, True)
-            self.add_log_entry(f"Transfer {amt:.1f}L from {src} → {dest}", "INFO")
-            self.show_transfer_status("Transfer successful", "success")
             self.update_displays()
 
         except Exception as e:
@@ -305,7 +296,7 @@ class FuelManagementGUI:
 
     def update_displays(self):
         for tid, gf in self.gauge_widgets.items():
-            t = self.tanks[tid]
+            t = self.fuel_system.get_tank(tid)
             perc = t.get_fuel_percentage()
             color = self.status_color(t.get_status())
 
@@ -316,8 +307,8 @@ class FuelManagementGUI:
             gf.fuel_label.config(text=f"{t.get_fuel_level():.0f}L / {t.get_capacity():.0f}L")
             gf.percentage_label.config(text=f"{perc:.1f}%", fg=color)
 
-        total = sum(t.get_fuel_level() for t in self.tanks.values())
-        cap = sum(t.get_capacity() for t in self.tanks.values())
+        total = self.fuel_system.get_total_fuel()
+        cap = self.fuel_system.get_total_capacity()
         self.total_label.config(text=f"Total: {total:.0f}L / {cap:.0f}L")
         self.root.after(1000, self.update_displays)
 
@@ -330,4 +321,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
